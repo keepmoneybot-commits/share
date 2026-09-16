@@ -292,10 +292,10 @@ const appId = 'my-shared-room'; // 👈 請把這一行補回來
         let expensesList = [];
         let finalCalculatedAmount = 0;
 
-        // Init App
+                // Init App
         async function init() {
             try {
-                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                if (!firebaseConfig || !firebaseConfig.apiKey) {
                     showToast("找不到 Firebase 設定，請確認環境配置。");
                     hideLoading();
                     return;
@@ -305,20 +305,34 @@ const appId = 'my-shared-room'; // 👈 請把這一行補回來
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Authentication
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
+                // 加入 10 秒超時機制與直接顯示錯誤畫面的功能
+                const initFlow = async () => {
                     await signInAnonymously(auth);
-                }
+                    await checkRoomExists();
+                };
 
-                await checkRoomExists();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('連線逾時，請確認網路狀態或資料庫權限設定。')), 10000)
+                );
+                
+                await Promise.race([initFlow(), timeoutPromise]);
             } catch (err) {
                 console.error("Firebase init failed:", err);
-                showToast("連線失敗，請稍後再試。");
                 hideLoading();
+                
+                // 將隱藏的錯誤直接印在畫面上，讓我們知道到底是哪裡出錯
+                const setupScreen = document.getElementById('setupScreen');
+                setupScreen.innerHTML = `
+                    <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
+                        <div class="text-red-500 font-bold text-xl mb-2">連線發生錯誤 ❌</div>
+                        <div class="text-sm text-gray-600 text-left bg-gray-100 p-3 rounded-lg overflow-auto break-all">
+                            ${err.message}
+                        </div>
+                    </div>`;
+                setupScreen.classList.remove('hidden');
             }
         }
+
 
         // Check if room configuration exists
         async function checkRoomExists() {
