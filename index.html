@@ -189,6 +189,15 @@
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h3 class="font-bold text-gray-700">📜 歷史紀錄</h3>
+                <!-- 加入搜尋與日曆按鈕 -->
+                <div class="flex items-center space-x-4 ml-auto mr-4">
+                    <button onclick="openSearchModal()" class="text-gray-400 hover:text-blue-500 p-1 transition-colors active:scale-90" title="搜尋">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </button>
+                    <button onclick="openCalendarModal()" class="text-gray-400 hover:text-blue-500 p-1 transition-colors active:scale-90" title="選擇日期">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </button>
+                </div>
                 <button onclick="openSettleModal()" class="text-sm font-semibold text-red-500 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
                     結清歸零
                 </button>
@@ -247,6 +256,41 @@
         </div>
     </div>
 
+    <!-- Search Bottom Sheet -->
+    <div id="searchModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex flex-col justify-end opacity-0 transition-opacity duration-300">
+        <div id="searchSheet" class="bg-gray-100 rounded-t-3xl w-full max-w-lg mx-auto shadow-2xl transform translate-y-full transition-transform duration-300 p-6 pb-12">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-700 text-lg">🔍 搜尋紀錄</h3>
+                <button onclick="closeSearchModal()" class="text-gray-400 hover:text-gray-600 font-bold p-2 text-xl">✕</button>
+            </div>
+            <input type="text" id="searchInputBottomSheet" placeholder="輸入想尋找的花費名稱..." class="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none mb-4 text-base shadow-sm">
+            <div class="flex space-x-3">
+                <button onclick="setSearchTag('晚餐')" class="bg-white border border-gray-200 px-5 py-2.5 rounded-full text-gray-600 font-bold hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm">🍽️ 晚餐</button>
+                <button onclick="setSearchTag('飲料')" class="bg-white border border-gray-200 px-5 py-2.5 rounded-full text-gray-600 font-bold hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm">🥤 飲料</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Bottom Sheet -->
+    <div id="calendarModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex flex-col justify-end opacity-0 transition-opacity duration-300">
+        <div id="calendarSheet" class="bg-gray-100 rounded-t-3xl w-full max-w-lg mx-auto shadow-2xl transform translate-y-full transition-transform duration-300 p-6 pb-12">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-700 text-lg">📅 日期篩選</h3>
+                <button onclick="closeCalendarModal()" class="text-gray-400 hover:text-gray-600 font-bold p-2 text-xl">✕</button>
+            </div>
+            <div class="flex items-center justify-between space-x-3 mb-6">
+                <button id="prevDayBtn" class="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-50 transition-colors shadow-sm active:scale-95">◀ 前一天</button>
+                <div class="flex-[1.5] relative">
+                    <input type="date" id="dateFilterBottomSheet" class="w-full text-center border border-gray-200 rounded-xl bg-white text-gray-700 font-bold py-3.5 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                </div>
+                <button id="nextDayBtn" class="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-50 transition-colors shadow-sm active:scale-95">後一天 ▶</button>
+            </div>
+            <button id="clearDateBtn" class="w-full bg-blue-50 text-blue-600 font-bold py-4 rounded-xl hover:bg-blue-100 transition-colors shadow-sm">
+                顯示全部紀錄
+            </button>
+        </div>
+    </div>
+    
     <div id="confirmModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
             <h3 class="text-xl font-bold text-gray-800 mb-2">確定要結清嗎？</h3>
@@ -292,7 +336,10 @@ let auth;
 let roomConfig = null;
 let myRole = appId ? localStorage.getItem(`split_role_${appId}`) : null;
 let expensesList = [];
-let finalCalculatedAmount = 0;
+let expensesList = [];
+        let finalCalculatedAmount = 0;
+        let searchTerm = ''; // 搜尋變數
+        let selectedDate = ''; // 日期變數
 let currentMyBalance = 0; // 記錄當前餘額供結清使用
 
                 // Init App
@@ -483,38 +530,63 @@ document.getElementById('btnCreateRoom').addEventListener('click', async () => {
             const emptyEl = document.getElementById('emptyState');
             listEl.innerHTML = '';
             
-            if (expensesList.length === 0) {
+            // 先精準計算「所有」紀錄的總餘額 (不受搜尋過濾影響)
+            expensesList.forEach(exp => {
+                const amount = parseFloat(exp.amount);
+                const impactAmount = exp.isSplit ? (amount / 2) : amount;
+                if (exp.paidBy === myRole) {
+                    myBalance += impactAmount;
+                } else {
+                    myBalance -= impactAmount;
+                }
+            });
+
+            // 進行搜尋與日期過濾
+            let displayList = expensesList.filter(exp => {
+                let matchSearch = true;
+                let matchDate = true;
+                
+                if (searchTerm) {
+                    matchSearch = exp.name.toLowerCase().includes(searchTerm);
+                }
+                if (selectedDate) {
+                    const expDateObj = new Date(exp.timestamp);
+                    const offset = expDateObj.getTimezoneOffset();
+                    const expDateStr = new Date(expDateObj.getTime() - (offset*60*1000)).toISOString().split('T')[0];
+                    matchDate = (expDateStr === selectedDate);
+                }
+                return matchSearch && matchDate;
+            });
+
+            // 畫面顯示
+            if (displayList.length === 0) {
                 emptyEl.classList.remove('hidden');
+                if (searchTerm || selectedDate) {
+                    emptyEl.innerHTML = `<div class="text-4xl mb-3">🔍</div><p class="text-gray-400 font-medium">找不到符合條件的紀錄</p>`;
+                } else {
+                    emptyEl.innerHTML = `<div class="text-4xl mb-3">📝</div><p class="text-gray-400 font-medium">目前還沒有任何記帳紀錄喔！</p>`;
+                }
                 listEl.classList.add('hidden');
             } else {
                 emptyEl.classList.add('hidden');
                 listEl.classList.remove('hidden');
             }
 
-            expensesList.forEach(exp => {
-                // Calculate impact
+            // 渲染過濾後的列表
+            displayList.forEach(exp => {
                 const amount = parseFloat(exp.amount);
-                // If split, impact is half. If not split, impact is full amount.
                 const impactAmount = exp.isSplit ? (amount / 2) : amount;
-                
-                // Calculate my balance
                 let myImpactForThisRow = 0;
                 
                 if (exp.paidBy === myRole) {
-                    // I paid for it. They owe me the impact amount.
-                    myBalance += impactAmount;
                     myImpactForThisRow = impactAmount;
                 } else {
-                    // They paid for it. I owe them the impact amount.
-                    myBalance -= impactAmount;
                     myImpactForThisRow = -impactAmount;
                 }
 
-                // Render Row
                 const li = document.createElement('div');
                 li.className = 'p-5 hover:bg-gray-50 transition-colors flex justify-between items-center group';
                 
-                // Determine text representation
                 const iPaid = exp.paidBy === myRole;
                 const payerText = iPaid ? '你先付了' : `${partnerName} 先付了`;
                 
@@ -537,24 +609,19 @@ document.getElementById('btnCreateRoom').addEventListener('click', async () => {
                         </div>
                     </div>
                     <button onclick="deleteExpense('${exp.id}')" class="text-gray-300 hover:text-red-500 focus:outline-none p-2 rounded-full hover:bg-red-50 transition-all opacity-100 md:opacity-0 group-hover:opacity-100 flex-shrink-0" title="刪除此筆">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 `;
                 listEl.appendChild(li);
             });
 
-            // Update Balance Board
             const board = document.getElementById('balanceBoard');
             const bAmount = document.getElementById('balanceAmount');
             const bStatus = document.getElementById('balanceStatus');
             
-            // Fix rounding issues
-myBalance = Math.round(myBalance * 100) / 100;
-currentMyBalance = myBalance; // 記錄當前餘額供結清使用
+            myBalance = Math.round(myBalance * 100) / 100;
 
-if (myBalance === 0) {
+            if (myBalance === 0) {
                 bAmount.textContent = '$0';
                 bStatus.textContent = '雙方目前已結清 🤝';
                 board.className = 'bg-gray-400 text-white p-8 text-center transition-colors duration-500';
@@ -826,6 +893,88 @@ if (myBalance === 0) {
                 calcResult.textContent = '...';
             }
         }
+
+        // ======= 搜尋與日曆彈出視窗控制 =======
+        const searchModal = document.getElementById('searchModal');
+        const searchSheet = document.getElementById('searchSheet');
+        const searchInput = document.getElementById('searchInputBottomSheet');
+        
+        window.openSearchModal = function() {
+            searchModal.classList.remove('hidden');
+            setTimeout(() => {
+                searchModal.classList.remove('opacity-0');
+                searchSheet.classList.remove('translate-y-full');
+                searchInput.focus();
+            }, 10);
+        };
+        window.closeSearchModal = function() {
+            searchModal.classList.add('opacity-0');
+            searchSheet.classList.add('translate-y-full');
+            setTimeout(() => searchModal.classList.add('hidden'), 300);
+        };
+        
+        window.setSearchTag = function(tag) {
+            searchInput.value = tag;
+            searchTerm = tag.toLowerCase();
+            updateUI();
+            closeSearchModal();
+        };
+
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value.trim().toLowerCase();
+            updateUI();
+        });
+
+        const calendarModal = document.getElementById('calendarModal');
+        const calendarSheet = document.getElementById('calendarSheet');
+        const dateInput = document.getElementById('dateFilterBottomSheet');
+
+        window.openCalendarModal = function() {
+            calendarModal.classList.remove('hidden');
+            setTimeout(() => {
+                calendarModal.classList.remove('opacity-0');
+                calendarSheet.classList.remove('translate-y-full');
+            }, 10);
+        };
+        window.closeCalendarModal = function() {
+            calendarModal.classList.add('opacity-0');
+            calendarSheet.classList.add('translate-y-full');
+            setTimeout(() => calendarModal.classList.add('hidden'), 300);
+        };
+
+        dateInput.addEventListener('change', (e) => {
+            selectedDate = e.target.value;
+            updateUI();
+        });
+
+        document.getElementById('clearDateBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            selectedDate = '';
+            dateInput.value = '';
+            updateUI();
+            closeCalendarModal();
+        });
+
+        function changeDateBy(days) {
+            let currentDate = selectedDate ? new Date(selectedDate) : new Date();
+            currentDate.setDate(currentDate.getDate() + days);
+            const offset = currentDate.getTimezoneOffset();
+            const targetDate = new Date(currentDate.getTime() - (offset*60*1000));
+            selectedDate = targetDate.toISOString().split('T')[0];
+            
+            dateInput.value = selectedDate;
+            updateUI();
+        }
+
+        document.getElementById('prevDayBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            changeDateBy(-1);
+        });
+        
+        document.getElementById('nextDayBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            changeDateBy(1);
+        });
 
         // Start initialization
         window.onload = init;
