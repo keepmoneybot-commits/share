@@ -273,16 +273,14 @@
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Variables Environment Check
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-split-app';
-        let firebaseConfig = null;
-        if (typeof __firebase_config !== 'undefined') {
-            try {
-                // 確保能正確解析字串或物件格式的設定檔
-                firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-            } catch (e) {
-                console.error("Firebase config parse error", e);
-            }
-        }
+        const firebaseConfig = {
+  apiKey: "AIzaSyBVKKpqONITfxJ5sG3ajiZmyks0qXJ78PE",
+  authDomain: "share-4b1cb.firebaseapp.com",
+  projectId: "share-4b1cb",
+  storageBucket: "share-4b1cb.firebasestorage.app",
+  messagingSenderId: "616764535308",
+  appId: "1:616764535308:web:1c987d881624b03cafb429"
+};
         
         // App State
         let db;
