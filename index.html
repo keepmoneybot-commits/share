@@ -1,835 +1,905 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>一對一分帳小幫手</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            touch-action: manipulation; /* Prevent double-tap zoom on mobile */
-        }
-        /* Custom radio button styling for toggle effect */
-        .radio-toggle input:checked + div {
-            background-color: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-        /* Calculator grid */
-        .calc-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-        }
-        /* Loading spinner */
-        .spinner {
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top: 3px solid #fff;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+<div id="loadingScreen" class="fixed inset-0 bg-blue-600 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
+    <div class="spinner mb-4"></div>
+    <p class="text-white font-medium tracking-wider">連線至專屬帳房...</p>
+</div>
+
+<div id="setupScreen" class="hidden flex-1 flex flex-col justify-center items-center px-4 max-w-md mx-auto w-full">
+    <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
+        <div class="text-5xl mb-4">🏠</div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">建立你們的專屬帳房</h1>
+        <p class="text-gray-500 text-sm mb-6">請輸入你們的稱呼，之後分享網址就能一起記帳！</p>
         
-        /* Hide scrollbar for lists but keep functionality */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-    </style>
-</head>
-<body class="text-gray-800 antialiased min-h-screen flex flex-col">
-
-    <div id="loadingScreen" class="fixed inset-0 bg-blue-600 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
-        <div class="spinner mb-4"></div>
-        <p class="text-white font-medium tracking-wider">連線至專屬帳房...</p>
-    </div>
-
-    <div id="setupScreen" class="hidden flex-1 flex flex-col justify-center items-center px-4 max-w-md mx-auto w-full">
-        <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
-            <div class="text-5xl mb-4">🏠</div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">建立你們的專屬帳房</h1>
-            <p class="text-gray-500 text-sm mb-6">請輸入你們的稱呼，之後分享網址就能一起記帳！</p>
-            
-            <div class="space-y-4 text-left mb-8">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">你的名字 (Person A)</label>
-                    <input type="text" id="setupNameA" placeholder="例如：我、小明" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">對方的名字 (Person B)</label>
-                    <input type="text" id="setupNameB" placeholder="例如：另一半、小華" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
+        <div class="space-y-4 text-left mb-8">
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">你的名字 (Person A)</label>
+                <input type="text" id="setupNameA" placeholder="例如：我、小明" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
-            <button id="btnCreateRoom" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-95">
-                開始記帳
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">對方的名字 (Person B)</label>
+                <input type="text" id="setupNameB" placeholder="例如：另一半、小華" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+        </div>
+        <button id="btnCreateRoom" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-95">
+            開始記帳
+        </button>
+    </div>
+</div>
+
+<div id="roleSelectionScreen" class="hidden flex-1 flex flex-col justify-center items-center px-4 max-w-md mx-auto w-full">
+    <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
+        <div class="text-5xl mb-4">👋</div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">歡迎來到共同帳房</h1>
+        <p class="text-gray-500 text-sm mb-6">請選擇你的身份，系統會自動轉換為你的視角</p>
+        
+        <div class="space-y-3 mb-6">
+            <button onclick="selectRole('userA')" class="w-full bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 text-gray-800 font-bold py-4 rounded-xl transition-all active:scale-95 text-lg">
+                我是 <span id="displayRoleA" class="text-blue-600"></span>
+            </button>
+            <button onclick="selectRole('userB')" class="w-full bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 text-gray-800 font-bold py-4 rounded-xl transition-all active:scale-95 text-lg">
+                我是 <span id="displayRoleB" class="text-blue-600"></span>
             </button>
         </div>
     </div>
+</div>
 
-    <div id="roleSelectionScreen" class="hidden flex-1 flex flex-col justify-center items-center px-4 max-w-md mx-auto w-full">
-        <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
-            <div class="text-5xl mb-4">👋</div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">歡迎來到共同帳房</h1>
-            <p class="text-gray-500 text-sm mb-6">請選擇你的身份，系統會自動轉換為你的視角</p>
-            
-            <div class="space-y-3 mb-6">
-                <button onclick="selectRole('userA')" class="w-full bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 text-gray-800 font-bold py-4 rounded-xl transition-all active:scale-95 text-lg">
-                    我是 <span id="displayRoleA" class="text-blue-600"></span>
-                </button>
-                <button onclick="selectRole('userB')" class="w-full bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 text-gray-800 font-bold py-4 rounded-xl transition-all active:scale-95 text-lg">
-                    我是 <span id="displayRoleB" class="text-blue-600"></span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="mainApp" class="hidden max-w-lg mx-auto mt-4 px-4 w-full flex-1 pb-24">
-        
-        <!-- Header: Identity & Share -->
-        <div class="flex justify-between items-center mb-4 px-2">
-            <div class="flex items-center space-x-2">
-                <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div>
-                    <div class="text-xs text-gray-500">目前視角</div>
-                    <div class="text-sm font-bold text-gray-800" id="currentIdentityName">...</div>
-                </div>
-            </div>
-            <button onclick="shareLink()" class="flex items-center space-x-1 bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-600 shadow-sm active:scale-95 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+<div id="mainApp" class="hidden max-w-lg mx-auto mt-4 px-4 w-full flex-1 pb-24">
+    
+    <div class="flex justify-between items-center mb-4 px-2">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                 </svg>
-                <span>邀請對方</span>
-            </button>
+            </div>
+            <div>
+                <div class="text-xs text-gray-500">目前視角</div>
+                <div class="text-sm font-bold text-gray-800" id="currentIdentityName">...</div>
+            </div>
+        </div>
+        <button onclick="shareLink()" class="flex items-center space-x-1 bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-600 shadow-sm active:scale-95 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            <span>邀請對方</span>
+        </button>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+        <div id="balanceBoard" class="bg-gray-400 text-white p-8 text-center transition-colors duration-500">
+            <h1 class="text-sm font-semibold opacity-80 mb-2 tracking-wider">目前帳務狀況</h1>
+            <div id="balanceAmount" class="text-4xl font-bold mb-1">$0</div>
+            <div id="balanceStatus" class="text-sm font-medium opacity-90">雙方目前已結清 🤝</div>
         </div>
 
-        <!-- Balance Board -->
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-            <div id="balanceBoard" class="bg-gray-400 text-white p-8 text-center transition-colors duration-500">
-                <h1 class="text-sm font-semibold opacity-80 mb-2 tracking-wider">目前帳務狀況</h1>
-                <div id="balanceAmount" class="text-4xl font-bold mb-1">$0</div>
-                <div id="balanceStatus" class="text-sm font-medium opacity-90">雙方目前已結清 🤝</div>
-            </div>
-
-            <!-- Add Expense Form -->
-            <form id="expenseForm" class="p-6">
-                <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center">
-                    <span>✍️ 新增一筆花費</span>
-                </h2>
-                
-                <!-- Who paid -->
-                <div class="mb-5">
-                    <label class="block text-sm font-semibold text-gray-600 mb-2">這筆錢是誰付的？</label>
-                    <div class="flex space-x-3 radio-toggle">
-                        <label class="flex-1 cursor-pointer">
-                            <input type="radio" name="paidBy" value="me" class="hidden" checked>
-                            <div id="labelPaidByMe" class="text-center py-2.5 border-2 border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-                                我付的
-                            </div>
-                        </label>
-                        <label class="flex-1 cursor-pointer">
-                            <input type="radio" name="paidBy" value="them" class="hidden">
-                            <div id="labelPaidByThem" class="text-center py-2.5 border-2 border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-                                對方付的
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Item Name & Amount -->
-                <div class="flex space-x-4 mb-5">
-                    <div class="flex-1">
-                        <label for="itemName" class="block text-sm font-semibold text-gray-600 mb-2">項目名稱</label>
-                        <input type="text" id="itemName" placeholder="晚餐、電影票" required
-                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-gray-400">
-                    </div>
-                    <div class="w-2/5 relative">
-                        <label for="amountDisplay" class="block text-sm font-semibold text-gray-600 mb-2">金額</label>
-                        <!-- Readonly input that triggers calculator -->
-                        <input type="text" id="amountDisplay" placeholder="0" readonly required
-                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer transition-all placeholder-gray-400 text-right font-medium">
-                    </div>
-                </div>
-
-                <!-- Split Checkbox -->
-                <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <label class="flex items-start cursor-pointer">
-                        <div class="flex-shrink-0 mt-0.5">
-                            <input type="checkbox" id="isSplit"
-                                class="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+        <form id="expenseForm" class="p-6">
+            <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <span>✍️ 新增一筆花費</span>
+            </h2>
+            
+            <div class="mb-5">
+                <label class="block text-sm font-semibold text-gray-600 mb-2">這筆錢是誰付的？</label>
+                <div class="flex space-x-3 radio-toggle">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="paidBy" value="me" class="hidden" checked>
+                        <div id="labelPaidByMe" class="text-center py-2.5 border-2 border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                            我付的
                         </div>
-                        <div class="ml-3">
-                            <span class="block text-sm font-bold text-gray-700">這筆花費要兩人平分嗎？</span>
-                            <span class="block text-xs text-gray-500 mt-1" id="splitHint">
-                                打勾：金額除以二。若取消：這筆錢全由另一方負擔（例如幫對方代買）。
-                            </span>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="paidBy" value="them" class="hidden">
+                        <div id="labelPaidByThem" class="text-center py-2.5 border-2 border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                            對方付的
                         </div>
                     </label>
                 </div>
+            </div>
 
-                <button type="submit" id="btnSubmitExpense"
-                    class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-95 flex justify-center items-center">
-                    加入帳單
-                </button>
-            </form>
-        </div>
+            <div class="flex space-x-4 mb-5">
+                <div class="flex-1">
+                    <label for="itemName" class="block text-sm font-semibold text-gray-600 mb-2">項目名稱</label>
+                    <input type="text" id="itemName" placeholder="晚餐、電影票" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-gray-400">
+                </div>
+                <div class="w-2/5 relative">
+                    <label for="amountDisplay" class="block text-sm font-semibold text-gray-600 mb-2">金額</label>
+                    <input type="text" id="amountDisplay" placeholder="0" readonly required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer transition-all placeholder-gray-400 text-right font-medium">
+                </div>
+            </div>
 
-        <!-- History List -->
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                <h3 class="font-bold text-gray-700">📜 歷史紀錄</h3>
-                <button onclick="openSettleModal()" class="text-sm font-semibold text-red-500 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-                    結清歸零
-                </button>
+            <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <label class="flex items-start cursor-pointer">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <input type="checkbox" id="isSplit"
+                            class="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                    </div>
+                    <div class="ml-3">
+                        <span class="block text-sm font-bold text-gray-700">這筆花費要兩人平分嗎？</span>
+                        <span class="block text-xs text-gray-500 mt-1" id="splitHint">
+                            打勾：金額除以二。若取消：這筆錢全由另一方負擔（例如幫對方代買）。
+                        </span>
+                    </div>
+                </label>
             </div>
-            
-            <div id="expenseList" class="divide-y divide-gray-100 max-h-96 overflow-y-auto no-scrollbar">
-                <!-- Records will be injected here via JS -->
-            </div>
-            
-            <!-- Empty state -->
-            <div id="emptyState" class="p-8 text-center hidden">
-                <div class="text-4xl mb-3">📝</div>
-                <p class="text-gray-400 font-medium">目前還沒有任何記帳紀錄喔！</p>
-            </div>
-        </div>
+
+            <button type="submit" id="btnSubmitExpense"
+                class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-95 flex justify-center items-center">
+                加入帳單
+            </button>
+        </form>
     </div>
 
-    <div id="calcModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex flex-col justify-end opacity-0 transition-opacity duration-300">
-        <div id="calcSheet" class="bg-gray-100 rounded-t-3xl w-full max-w-lg mx-auto shadow-2xl transform translate-y-full transition-transform duration-300 p-4 pb-8">
-            <div class="flex justify-between items-center mb-4 px-2">
-                <h3 class="font-bold text-gray-700">輸入金額或計算</h3>
-                <button onclick="closeCalculator()" class="text-gray-400 hover:text-gray-600 font-bold p-2">✕</button>
-            </div>
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h3 class="font-bold text-gray-700">📜 歷史紀錄</h3>
             
-            <!-- Calc Display -->
-            <div class="bg-white rounded-2xl p-4 mb-4 shadow-inner text-right border border-gray-200">
-                <div id="calcEquation" class="text-gray-400 text-sm h-5 mb-1 tracking-wider overflow-hidden"></div>
-                <div id="calcResult" class="text-3xl font-bold text-gray-800 overflow-hidden">0</div>
-            </div>
-            
-            <!-- Calc Grid -->
-            <div class="calc-grid">
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="C">C</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="DEL">⌫</button>
-                <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="/">÷</button>
-                <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="*">×</button>
-                
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="7">7</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="8">8</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="9">9</button>
-                <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="-">−</button>
-                
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="4">4</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="5">5</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="6">6</button>
-                <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="+">+</button>
-                
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="1">1</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="2">2</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="3">3</button>
-                <button class="calc-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-sm text-xl row-span-2" data-val="OK">OK</button>
-                
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl col-span-2" data-val="0">0</button>
-                <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val=".">.</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirmModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
-            <h3 class="text-xl font-bold text-gray-800 mb-2">確定要結清嗎？</h3>
-            <p class="text-gray-500 text-sm mb-6">系統將會自動新增一筆「結清款項」來抵銷當前的欠款，讓雙方帳務歸零（不會刪除歷史紀錄）。</p>
-            <div class="flex space-x-3">
-                <button onclick="closeSettleModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition-colors">
-                    取消
+            <div class="flex items-center space-x-3 ml-auto mr-4">
+                <button onclick="openSearchModal()" class="text-gray-400 hover:text-blue-500 p-1.5 rounded-lg hover:bg-gray-100 transition-colors active:scale-90" title="搜尋">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </button>
-                <button onclick="confirmSettle()" id="btnConfirmSettle" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl shadow-sm transition-colors flex justify-center items-center">
-                    確認結清
+                <button onclick="openCalendarModal()" class="text-gray-400 hover:text-blue-500 p-1.5 rounded-lg hover:bg-gray-100 transition-colors active:scale-90" title="選擇日期">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </button>
             </div>
+
+            <button onclick="openSettleModal()" class="text-sm font-semibold text-red-500 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+                結清歸零
+            </button>
         </div>
-    </div>
-
-    <!-- Message Toast -->
-    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50">
-        Message
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
-
-        // Global Variables Environment Check
-        const firebaseConfig = {
-  apiKey: "AIzaSyBVKKpqONITfxJ5sG3ajiZmyks0qXJ78PE",
-  authDomain: "share-4b1cb.firebaseapp.com",
-  projectId: "share-4b1cb",
-  storageBucket: "share-4b1cb.firebasestorage.app",
-  messagingSenderId: "616764535308",
-  appId: "1:616764535308:web:1c987d881624b03cafb429"
-};
         
-// 從網址列取得專屬房間 ID (如果有的話)
-const urlParams = new URLSearchParams(window.location.search);
-let appId = urlParams.get('room'); 
+        <div id="expenseList" class="divide-y divide-gray-100 max-h-96 overflow-y-auto no-scrollbar"></div>
+        
+        <div id="emptyState" class="p-8 text-center hidden">
+            <div class="text-4xl mb-3">📝</div>
+            <p class="text-gray-400 font-medium">目前還沒有任何記帳紀錄喔！</p>
+        </div>
+    </div>
+</div>
 
-// App State
-let db;
-let auth;
-let roomConfig = null;
-let myRole = appId ? localStorage.getItem(`split_role_${appId}`) : null;
-let expensesList = [];
-let finalCalculatedAmount = 0;
-let currentMyBalance = 0; // 記錄當前餘額供結清使用
+<div id="calcModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex flex-col justify-end opacity-0 transition-opacity duration-300">
+    <div id="calcSheet" class="bg-gray-100 rounded-t-3xl w-full max-w-lg mx-auto shadow-2xl transform translate-y-full transition-transform duration-300 p-4 pb-8">
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h3 class="font-bold text-gray-700">輸入金額或計算</h3>
+            <button onclick="closeCalculator()" class="text-gray-400 hover:text-gray-600 font-bold p-2">✕</button>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-4 mb-4 shadow-inner text-right border border-gray-200">
+            <div id="calcEquation" class="text-gray-400 text-sm h-5 mb-1 tracking-wider overflow-hidden"></div>
+            <div id="calcResult" class="text-3xl font-bold text-gray-800 overflow-hidden">0</div>
+        </div>
+        
+        <div class="calc-grid">
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="C">C</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="DEL">⌫</button>
+            <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="/">÷</button>
+            <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="*">×</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="7">7</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="8">8</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="9">9</button>
+            <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="-">−</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="4">4</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="5">5</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="6">6</button>
+            <button class="calc-btn bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="+">+</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="1">1</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="2">2</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val="3">3</button>
+            <button class="calc-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-sm text-xl row-span-2" data-val="OK">OK</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl col-span-2" data-val="0">0</button>
+            <button class="calc-btn bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 rounded-xl shadow-sm text-xl" data-val=".">.</button>
+        </div>
+    </div>
+</div>
 
-                // Init App
-        async function init() {
-            try {
-                if (!firebaseConfig || !firebaseConfig.apiKey) {
-                    showToast("找不到 Firebase 設定，請確認環境配置。");
-                    hideLoading();
-                    return;
-                }
-                
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+<!-- Search Bottom Sheet -->
+<div id="searchModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex flex-col justify-end opacity-0 transition-opacity duration-300">
+    <div id="searchSheet" class="bg-gray-100 rounded-t-3xl w-full max-w-lg mx-auto shadow-2xl transform translate-y-full transition-transform duration-300 p-6 pb-12">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-gray-700 text-lg">🔍 搜尋紀錄</h3>
+            <button onclick="closeSearchModal()" class="text-gray-400 hover:text-gray-600 font-bold p-2 text-xl">✕</button>
+        </div>
+        <input type="text" id="searchInputBottomSheet" placeholder="輸入想尋找的花費名稱..." class="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none mb-4 text-base shadow-sm">
+            <div class="text-xs text-gray-400 font-semibold mb-2">常用搜尋：</div>
+            <div id="dynamicSearchTags" class="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
+                <!-- 動態生成的常用標籤會出現在這裡 -->
+            </div>
+        </div>
+</div>
 
-                // 加入 10 秒超時機制與直接顯示錯誤畫面的功能
-                const initFlow = async () => {
-                    await signInAnonymously(auth);
-                    await checkRoomExists();
-                };
+<!-- Calendar Bottom Sheet -->
+<div id="calendarModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex flex-col justify-end opacity-0 transition-opacity duration-300">
+    <div id="calendarSheet" class="bg-gray-100 rounded-t-3xl w-full max-w-lg mx-auto shadow-2xl transform translate-y-full transition-transform duration-300 p-6 pb-12">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-gray-700 text-lg">📅 日期篩選</h3>
+            <button onclick="closeCalendarModal()" class="text-gray-400 hover:text-gray-600 font-bold p-2 text-xl">✕</button>
+        </div>
+        <div class="flex items-center justify-between space-x-3 mb-6">
+            <button id="prevDayBtn" class="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-50 transition-colors shadow-sm active:scale-95">◀ 前一天</button>
+            <div class="flex-[1.5] relative">
+                <input type="date" id="dateFilterBottomSheet" class="w-full text-center border border-gray-200 rounded-xl bg-white text-gray-700 font-bold py-3.5 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+            </div>
+            <button id="nextDayBtn" class="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-50 transition-colors shadow-sm active:scale-95">後一天 ▶</button>
+        </div>
+        <button id="clearDateBtn" class="w-full bg-blue-50 text-blue-600 font-bold py-4 rounded-xl hover:bg-blue-100 transition-colors shadow-sm">
+            顯示全部紀錄
+        </button>
+    </div>
+</div>
 
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('連線逾時，請確認網路狀態或資料庫權限設定。')), 10000)
-                );
-                
-                await Promise.race([initFlow(), timeoutPromise]);
-            } catch (err) {
-                console.error("Firebase init failed:", err);
+<div id="confirmModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">確定要結清嗎？</h3>
+        <p class="text-gray-500 text-sm mb-6">系統將會自動新增一筆「結清款項」來抵銷當前的欠款，讓雙方帳務歸零（不會刪除歷史紀錄）。</p>
+        <div class="flex space-x-3">
+            <button onclick="closeSettleModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition-colors">
+                取消
+            </button>
+            <button onclick="confirmSettle()" id="btnConfirmSettle" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl shadow-sm transition-colors flex justify-center items-center">
+                確認結清
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+    Message
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBVKKpqONITfxJ5sG3ajiZmyks0qXJ78PE",
+        authDomain: "share-4b1cb.firebaseapp.com",
+        projectId: "share-4b1cb",
+        storageBucket: "share-4b1cb.firebasestorage.app",
+        messagingSenderId: "616764535308",
+        appId: "1:616764535308:web:1c987d881624b03cafb429"
+    };
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    let appId = urlParams.get('room'); 
+
+    let db;
+    let auth;
+    let roomConfig = null;
+    let myRole = appId ? localStorage.getItem(`split_role_${appId}`) : null;
+    let expensesList = [];
+    let finalCalculatedAmount = 0;
+    let searchTerm = '';
+    let selectedDate = '';
+    let currentMyBalance = 0;
+
+    async function init() {
+        try {
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                showToast("找不到 Firebase 設定！");
                 hideLoading();
-                
-                // 將隱藏的錯誤直接印在畫面上，讓我們知道到底是哪裡出錯
-                const setupScreen = document.getElementById('setupScreen');
-                setupScreen.innerHTML = `
-                    <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
-                        <div class="text-red-500 font-bold text-xl mb-2">連線發生錯誤 ❌</div>
-                        <div class="text-sm text-gray-600 text-left bg-gray-100 p-3 rounded-lg overflow-auto break-all">
-                            ${err.message}
-                        </div>
-                    </div>`;
-                setupScreen.classList.remove('hidden');
+                return;
             }
+            
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            const initFlow = async () => {
+                await signInAnonymously(auth);
+                await checkRoomExists();
+            };
+
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('連線逾時，請確認網路狀態或資料庫權限設定。')), 10000)
+            );
+            
+            await Promise.race([initFlow(), timeoutPromise]);
+        } catch (err) {
+            console.error("Firebase init failed:", err);
+            hideLoading();
+            const setupScreen = document.getElementById('setupScreen');
+            setupScreen.innerHTML = `
+                <div class="bg-white p-8 rounded-3xl shadow-lg w-full text-center">
+                    <div class="text-red-500 font-bold text-xl mb-2">連線發生錯誤 ❌</div>
+                    <div class="text-sm text-gray-600 text-left bg-gray-100 p-3 rounded-lg overflow-auto break-all">
+                        ${err.message}
+                    </div>
+                </div>`;
+            setupScreen.classList.remove('hidden');
         }
-
-
-        // Check if room configuration exists
-async function checkRoomExists() {
-    if (!auth.currentUser) return;
-    
-    // 如果網址沒有帶 room ID，代表是剛進來準備建立新帳房
-    if (!appId) {
-        showSetup();
-        return;
     }
 
-    myRole = localStorage.getItem(`split_role_${appId}`);
-    
-    try {
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'roomInfo', 'config');
-        const docSnap = await getDoc(roomRef);
-        if (docSnap.exists()) {
-            roomConfig = docSnap.data();
-            if (myRole && (myRole === 'userA' || myRole === 'userB')) {
-                startApp();
+    async function checkRoomExists() {
+        if (!auth.currentUser) return;
+        
+        if (!appId) {
+            showSetup();
+            return;
+        }
+
+        myRole = localStorage.getItem(`split_role_${appId}`);
+        
+        try {
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'roomInfo', 'config');
+            const docSnap = await getDoc(roomRef);
+            if (docSnap.exists()) {
+                roomConfig = docSnap.data();
+                if (myRole && (myRole === 'userA' || myRole === 'userB')) {
+                    startApp();
+                } else {
+                    showRoleSelection();
+                }
             } else {
-                showRoleSelection();
+                window.location.href = window.location.pathname;
             }
-        } else {
-            // 如果房間 ID 不存在，回到首頁
-            window.location.href = window.location.pathname;
+        } catch (err) {
+            console.error("Error checking room:", err);
+            showToast("讀取資料失敗，請重新整理頁面。");
+            hideLoading();
         }
-    } catch (err) {
-        console.error("Error checking room:", err);
-        showToast("讀取資料失敗，請重新整理頁面。");
-        hideLoading();
     }
-}
 
-        /* UI State Management */
-        function hideLoading() {
-            const ls = document.getElementById('loadingScreen');
+    function hideLoading() {
+        const ls = document.getElementById('loadingScreen');
+        if (ls) {
             ls.classList.add('opacity-0');
             setTimeout(() => { ls.classList.add('hidden'); }, 500);
         }
-
-        function showSetup() {
-            hideLoading();
-            document.getElementById('setupScreen').classList.remove('hidden');
-        }
-
-        function showRoleSelection() {
-            hideLoading();
-            document.getElementById('displayRoleA').textContent = roomConfig.userA;
-            document.getElementById('displayRoleB').textContent = roomConfig.userB;
-            document.getElementById('roleSelectionScreen').classList.remove('hidden');
-        }
-
-        function showAppInterface() {
-            hideLoading();
-            document.getElementById('setupScreen').classList.add('hidden');
-            document.getElementById('roleSelectionScreen').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            
-            // Set identities in UI
-            const myName = myRole === 'userA' ? roomConfig.userA : roomConfig.userB;
-            const partnerName = myRole === 'userA' ? roomConfig.userB : roomConfig.userA;
-            
-            document.getElementById('currentIdentityName').textContent = myName;
-            document.getElementById('labelPaidByMe').textContent = myName + ' 付的';
-            document.getElementById('labelPaidByThem').textContent = partnerName + ' 付的';
-        }
-
-        // Room Creation
-document.getElementById('btnCreateRoom').addEventListener('click', async () => {
-    const nameA = document.getElementById('setupNameA').value.trim();
-    const nameB = document.getElementById('setupNameB').value.trim();
-    
-    if (!nameA || !nameB) {
-        showToast("請輸入雙方的稱呼！");
-        return;
     }
 
-    const btn = document.getElementById('btnCreateRoom');
-    btn.innerHTML = '<div class="spinner border-2 mx-auto"></div>';
-    btn.disabled = true;
-
-    try {
-        // 產生一個隨機不重複的專屬房號 (8碼)
-        const newRoomId = Math.random().toString(36).substring(2, 10);
-        
-        const roomRef = doc(db, 'artifacts', newRoomId, 'public', 'data', 'roomInfo', 'config');
-        await setDoc(roomRef, {
-            userA: nameA,
-            userB: nameB,
-            createdAt: Date.now()
-        });
-        
-        // 記錄創建者的身份，並重新導向到該專屬網址
-        localStorage.setItem(`split_role_${newRoomId}`, 'userA');
-        window.location.href = `?room=${newRoomId}`;
-        
-    } catch (err) {
-        console.error("Creation failed", err);
-        showToast("建立失敗，請確認權限。");
-        btn.innerHTML = '開始記帳';
-        btn.disabled = false;
+    function showSetup() {
+        hideLoading();
+        document.getElementById('setupScreen').classList.remove('hidden');
     }
-});
 
-        // Role Selection
-        window.selectRole = function(role) {
-            localStorage.setItem(`split_role_${appId}`, role);
-            myRole = role;
-            startApp();
-        };
+    function showRoleSelection() {
+        hideLoading();
+        document.getElementById('displayRoleA').textContent = roomConfig.userA;
+        document.getElementById('displayRoleB').textContent = roomConfig.userB;
+        document.getElementById('roleSelectionScreen').classList.remove('hidden');
+    }
 
-        // Start listening to data
-        function startApp() {
-            showAppInterface();
-            listenToExpenses();
+    function showAppInterface() {
+        hideLoading();
+        document.getElementById('setupScreen').classList.add('hidden');
+        document.getElementById('roleSelectionScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        
+        const myName = myRole === 'userA' ? roomConfig.userA : roomConfig.userB;
+        const partnerName = myRole === 'userA' ? roomConfig.userB : roomConfig.userA;
+        
+        document.getElementById('currentIdentityName').textContent = myName;
+        document.getElementById('labelPaidByMe').textContent = myName + ' 付的';
+        document.getElementById('labelPaidByThem').textContent = partnerName + ' 付的';
+    }
+
+    document.getElementById('btnCreateRoom').addEventListener('click', async () => {
+        const nameA = document.getElementById('setupNameA').value.trim();
+        const nameB = document.getElementById('setupNameB').value.trim();
+        
+        if (!nameA || !nameB) {
+            showToast("請輸入雙方的稱呼！");
+            return;
         }
 
-        // Listen to Firestore expenses collection
-        function listenToExpenses() {
-            const expensesRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
-            
-            onSnapshot(expensesRef, (snapshot) => {
-                expensesList = [];
-                snapshot.forEach((doc) => {
-                    expensesList.push({ id: doc.id, ...doc.data() });
-                });
-                
-                // Sort by timestamp descending
-                expensesList.sort((a, b) => b.timestamp - a.timestamp);
-                
-                updateUI();
-            }, (error) => {
-                console.error("Listen error:", error);
-                showToast("無法同步資料。");
+        const btn = document.getElementById('btnCreateRoom');
+        btn.innerHTML = '<div class="spinner border-2 mx-auto"></div>';
+        btn.disabled = true;
+
+        try {
+            const newRoomId = Math.random().toString(36).substring(2, 10);
+            const roomRef = doc(db, 'artifacts', newRoomId, 'public', 'data', 'roomInfo', 'config');
+            await setDoc(roomRef, {
+                userA: nameA,
+                userB: nameB,
+                createdAt: Date.now()
             });
+            
+            localStorage.setItem(`split_role_${newRoomId}`, 'userA');
+            window.location.href = `?room=${newRoomId}`;
+        } catch (err) {
+            console.error("Creation failed", err);
+            showToast("建立失敗，請確認權限。");
+            btn.innerHTML = '開始記帳';
+            btn.disabled = false;
+        }
+    });
+
+    window.selectRole = function(role) {
+        localStorage.setItem(`split_role_${appId}`, role);
+        myRole = role;
+        startApp();
+    };
+
+    function startApp() {
+        showAppInterface();
+        listenToExpenses();
+    }
+
+    function listenToExpenses() {
+        const expensesRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+        
+        onSnapshot(expensesRef, (snapshot) => {
+            expensesList = [];
+            snapshot.forEach((doc) => {
+                expensesList.push({ id: doc.id, ...doc.data() });
+            });
+            
+            expensesList.sort((a, b) => b.timestamp - a.timestamp);
+            updateUI();
+        }, (error) => {
+            console.error("Listen error:", error);
+            showToast("無法同步資料。");
+        });
+    }
+
+    function updateUI() {
+        let myBalance = 0;
+        const partnerName = myRole === 'userA' ? roomConfig.userB : roomConfig.userA;
+        
+        const listEl = document.getElementById('expenseList');
+        const emptyEl = document.getElementById('emptyState');
+        listEl.innerHTML = '';
+        
+        expensesList.forEach(exp => {
+            const amount = parseFloat(exp.amount);
+            const impactAmount = exp.isSplit ? (amount / 2) : amount;
+            if (exp.paidBy === myRole) {
+                myBalance += impactAmount;
+            } else {
+                myBalance -= impactAmount;
+            }
+        });
+
+        let displayList = expensesList.filter(exp => {
+            let matchSearch = true;
+            let matchDate = true;
+            
+            if (searchTerm) {
+                matchSearch = exp.name.toLowerCase().includes(searchTerm);
+            }
+            if (selectedDate) {
+                const expDateObj = new Date(exp.timestamp);
+                const offset = expDateObj.getTimezoneOffset();
+                const expDateStr = new Date(expDateObj.getTime() - (offset*60*1000)).toISOString().split('T')[0];
+                matchDate = (expDateStr === selectedDate);
+            }
+            return matchSearch && matchDate;
+        });
+
+        if (displayList.length === 0) {
+            emptyEl.classList.remove('hidden');
+            if (searchTerm || selectedDate) {
+                emptyEl.innerHTML = `<div class="text-4xl mb-3">🔍</div><p class="text-gray-400 font-medium">找不到符合條件的紀錄</p>`;
+            } else {
+                emptyEl.innerHTML = `<div class="text-4xl mb-3">📝</div><p class="text-gray-400 font-medium">目前還沒有任何記帳紀錄喔！</p>`;
+            }
+            listEl.classList.add('hidden');
+        } else {
+            emptyEl.classList.add('hidden');
+            listEl.classList.remove('hidden');
         }
 
-        function updateUI() {
-            let myBalance = 0;
-            const partnerRole = myRole === 'userA' ? 'userB' : 'userA';
-            const partnerName = myRole === 'userA' ? roomConfig.userB : roomConfig.userA;
+        displayList.forEach(exp => {
+            const amount = parseFloat(exp.amount);
+            const impactAmount = exp.isSplit ? (amount / 2) : amount;
+            let myImpactForThisRow = 0;
             
-            const listEl = document.getElementById('expenseList');
-            const emptyEl = document.getElementById('emptyState');
-            listEl.innerHTML = '';
-            
-            if (expensesList.length === 0) {
-                emptyEl.classList.remove('hidden');
-                listEl.classList.add('hidden');
+            if (exp.paidBy === myRole) {
+                myImpactForThisRow = impactAmount;
             } else {
-                emptyEl.classList.add('hidden');
-                listEl.classList.remove('hidden');
+                myImpactForThisRow = -impactAmount;
             }
 
-            expensesList.forEach(exp => {
-                // Calculate impact
-                const amount = parseFloat(exp.amount);
-                // If split, impact is half. If not split, impact is full amount.
-                const impactAmount = exp.isSplit ? (amount / 2) : amount;
-                
-                // Calculate my balance
-                let myImpactForThisRow = 0;
-                
-                if (exp.paidBy === myRole) {
-                    // I paid for it. They owe me the impact amount.
-                    myBalance += impactAmount;
-                    myImpactForThisRow = impactAmount;
-                } else {
-                    // They paid for it. I owe them the impact amount.
-                    myBalance -= impactAmount;
-                    myImpactForThisRow = -impactAmount;
-                }
+            const li = document.createElement('div');
+            li.className = 'p-5 hover:bg-gray-50 transition-colors flex justify-between items-center group';
+            
+            const iPaid = exp.paidBy === myRole;
+            const payerText = iPaid ? '你先付了' : `${partnerName} 先付了`;
+            
+            let impactColor = myImpactForThisRow > 0 ? 'text-emerald-500' : (myImpactForThisRow < 0 ? 'text-rose-500' : 'text-gray-500');
+            let impactSign = myImpactForThisRow > 0 ? '+' : '';
+            let impactDisplay = myImpactForThisRow !== 0 ? `${impactSign}$${Math.abs(myImpactForThisRow).toLocaleString()}` : '$0';
+            
+            const dateStr = new Date(exp.timestamp).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
 
-                // Render Row
-                const li = document.createElement('div');
-                li.className = 'p-5 hover:bg-gray-50 transition-colors flex justify-between items-center group';
-                
-                // Determine text representation
-                const iPaid = exp.paidBy === myRole;
-                const payerText = iPaid ? '你先付了' : `${partnerName} 先付了`;
-                
-                let impactColor = myImpactForThisRow > 0 ? 'text-emerald-500' : (myImpactForThisRow < 0 ? 'text-rose-500' : 'text-gray-500');
-                let impactSign = myImpactForThisRow > 0 ? '+' : '';
-                let impactDisplay = myImpactForThisRow !== 0 ? `${impactSign}$${Math.abs(myImpactForThisRow).toLocaleString()}` : '$0';
-                
-                const dateStr = new Date(exp.timestamp).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
-
-                li.innerHTML = `
-                    <div class="flex-1 pr-4">
-                        <div class="flex items-center space-x-2 mb-1">
-                            <span class="font-bold text-gray-800 text-lg">${exp.name}</span>
-                            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${payerText} $${amount.toLocaleString()}</span>
-                            ${exp.isSplit ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">平分</span>` : `<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">不平分</span>`}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            對你影響：<span class="font-semibold ${impactColor}">${impactDisplay}</span>
-                            <span class="text-xs text-gray-400 ml-2">${dateStr}</span>
-                        </div>
+            li.innerHTML = `
+                <div class="flex-1 pr-4">
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span class="font-bold text-gray-800 text-lg">${exp.name}</span>
+                        <span class="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${payerText} $${amount.toLocaleString()}</span>
+                        ${exp.isSplit ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">平分</span>` : `<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">不平分</span>`}
                     </div>
-                    <button onclick="deleteExpense('${exp.id}')" class="text-gray-300 hover:text-red-500 focus:outline-none p-2 rounded-full hover:bg-red-50 transition-all opacity-100 md:opacity-0 group-hover:opacity-100 flex-shrink-0" title="刪除此筆">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                `;
-                listEl.appendChild(li);
-            });
+                    <div class="text-sm text-gray-500">
+                        對你影響：<span class="font-semibold ${impactColor}">${impactDisplay}</span>
+                        <span class="text-xs text-gray-400 ml-2">${dateStr}</span>
+                    </div>
+                </div>
+                <button onclick="deleteExpense('${exp.id}')" class="text-gray-300 hover:text-red-500 focus:outline-none p-2 rounded-full hover:bg-red-50 transition-all opacity-100 md:opacity-0 group-hover:opacity-100 flex-shrink-0" title="刪除此筆">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            `;
+            listEl.appendChild(li);
+        });
 
-            // Update Balance Board
-            const board = document.getElementById('balanceBoard');
+        const board = document.getElementById('balanceBoard');
             const bAmount = document.getElementById('balanceAmount');
             const bStatus = document.getElementById('balanceStatus');
             
-            // Fix rounding issues
-myBalance = Math.round(myBalance * 100) / 100;
-currentMyBalance = myBalance; // 記錄當前餘額供結清使用
+            myBalance = Math.round(myBalance * 100) / 100;
+            currentMyBalance = myBalance; // 👈 補上這行，結清按鈕就能抓到正確餘額了！
 
-if (myBalance === 0) {
-                bAmount.textContent = '$0';
-                bStatus.textContent = '雙方目前已結清 🤝';
-                board.className = 'bg-gray-400 text-white p-8 text-center transition-colors duration-500';
-            } else if (myBalance > 0) {
-                bAmount.textContent = '$' + myBalance.toLocaleString();
-                bStatus.textContent = `${partnerName} 需給你 💰`;
-                board.className = 'bg-emerald-500 text-white p-8 text-center transition-colors duration-500';
-            } else {
-                bAmount.textContent = '$' + Math.abs(myBalance).toLocaleString();
-                bStatus.textContent = `你需給 ${partnerName} 💸`;
-                board.className = 'bg-rose-500 text-white p-8 text-center transition-colors duration-500';
-            }
+            // 每次畫面更新時，同步更新搜尋的常用動態標籤
+            updateDynamicTags();
+
+            if (myBalance === 0) {
+            bAmount.textContent = '$0';
+            bStatus.textContent = '雙方目前已結清 🤝';
+            board.className = 'bg-gray-400 text-white p-8 text-center transition-colors duration-500';
+        } else if (myBalance > 0) {
+            bAmount.textContent = '$' + myBalance.toLocaleString();
+            bStatus.textContent = `${partnerName} 需給你 💰`;
+            board.className = 'bg-emerald-500 text-white p-8 text-center transition-colors duration-500';
+        } else {
+            bAmount.textContent = '$' + Math.abs(myBalance).toLocaleString();
+            bStatus.textContent = `你需給 ${partnerName} 💸`;
+            board.className = 'bg-rose-500 text-white p-8 text-center transition-colors duration-500';
         }
-
-        // Form Submit
-        document.getElementById('expenseForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const itemName = document.getElementById('itemName').value.trim();
-            const paidBySelection = document.querySelector('input[name="paidBy"]:checked').value;
-            const isSplit = document.getElementById('isSplit').checked;
-
-            if (!itemName || finalCalculatedAmount <= 0) {
-                showToast("請填寫名稱並確認金額大於0");
-                return;
-            }
-            
-            const btn = document.getElementById('btnSubmitExpense');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<div class="spinner border-2"></div>';
-            btn.disabled = true;
-
-            // Map "me"/"them" to "userA"/"userB"
-            const actualPaidBy = paidBySelection === 'me' ? myRole : (myRole === 'userA' ? 'userB' : 'userA');
-
-            try {
-                const expensesRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
-                await addDoc(expensesRef, {
-                    name: itemName,
-                    amount: finalCalculatedAmount,
-                    paidBy: actualPaidBy,
-                    isSplit: isSplit,
-                    timestamp: Date.now()
-                });
-                
-                // Reset form
-                document.getElementById('itemName').value = '';
-                document.getElementById('amountDisplay').value = '';
-                finalCalculatedAmount = 0;
-                
-            } catch (err) {
-                console.error("Add error:", err);
-                showToast("新增失敗！");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        });
-
-        // Delete single expense
-        window.deleteExpense = async function(id) {
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id));
-            } catch(err) {
-                console.error("Delete error", err);
-                showToast("刪除失敗");
-            }
-        };
-
-        // Settle up process
-        window.openSettleModal = function() {
-            if(expensesList.length === 0) return;
-            const m = document.getElementById('confirmModal');
-            const c = document.getElementById('modalContent');
-            m.classList.remove('hidden');
-            setTimeout(() => {
-                m.classList.remove('opacity-0');
-                c.classList.remove('scale-95');
-            }, 10);
-        };
-
-        window.closeSettleModal = function() {
-            const m = document.getElementById('confirmModal');
-            const c = document.getElementById('modalContent');
-            m.classList.add('opacity-0');
-            c.classList.add('scale-95');
-            setTimeout(() => m.classList.add('hidden'), 300);
-        };
-
-        window.confirmSettle = async function() {
-    if (currentMyBalance === 0) {
-        showToast("目前帳務已經是結清狀態囉！");
-        closeSettleModal();
-        return;
     }
 
-    const btn = document.getElementById('btnConfirmSettle');
-    btn.innerHTML = '<div class="spinner border-2"></div>';
-    btn.disabled = true;
-    
-    try {
-        // 結清概念：新增一筆反向的匯款紀錄，讓帳務歸零 (不刪除歷史)
-        // 如果 currentMyBalance > 0 (對方欠我)，代表結清是「對方付給我」全額
-        const settleAmount = Math.abs(currentMyBalance);
-        const paidByRole = currentMyBalance > 0 ? (myRole === 'userA' ? 'userB' : 'userA') : myRole;
-
-        const expensesRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
-        await addDoc(expensesRef, {
-            name: "💰 結清帳務",
-            amount: settleAmount,
-            paidBy: paidByRole,
-            isSplit: false, // 結清代表全額給付抵銷，不平分
-            timestamp: Date.now()
-        });
+    document.getElementById('expenseForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
         
-        closeSettleModal();
-        showToast("已成功新增結清紀錄！");
-    } catch(err) {
-        console.error("Settle error", err);
-        showToast("結清失敗");
-    } finally {
-        btn.innerHTML = '確認結清';
-        btn.disabled = false;
-    }
-};
+        const itemName = document.getElementById('itemName').value.trim();
+        const paidBySelection = document.querySelector('input[name="paidBy"]:checked').value;
+        const isSplit = document.getElementById('isSplit').checked;
 
-        // Share link
-        window.shareLink = function() {
-            const url = window.location.href;
-            
-            // 處理在預覽環境（如 blob: 或 scf.usercontent.goog）產生無效網址的問題
-            if (url.startsWith('blob:') || url.includes('scf.usercontent.goog')) {
-                showToast("⚠️ 目前為預覽模式！請將此檔案部署至免費空間 (如 Vercel, Netlify) 以取得正式網址後再分享。");
-                return;
-            }
-
-            // Try to use modern clipboard API
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(url).then(() => {
-                    showToast("✅ 已複製專屬網址，快傳給對方吧！");
-                }).catch(err => {
-                    fallbackCopyTextToClipboard(url);
-                });
-            } else {
-                // Fallback for iFrame or non-HTTPS
-                fallbackCopyTextToClipboard(url);
-            }
-        };
+        if (!itemName || finalCalculatedAmount <= 0) {
+            showToast("請填寫名稱並確認金額大於0");
+            return;
+        }
         
-        function fallbackCopyTextToClipboard(text) {
-            var textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                showToast("✅ 已複製專屬網址，快傳給對方吧！");
-            } catch (err) {
-                showToast("複製失敗，請手動複製網址列。");
-            }
-            document.body.removeChild(textArea);
-        }
+        const btn = document.getElementById('btnSubmitExpense');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<div class="spinner border-2"></div>';
+        btn.disabled = true;
 
-        // Toast utility
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.remove('opacity-0', 'pointer-events-none');
-            setTimeout(() => {
-                t.classList.add('opacity-0', 'pointer-events-none');
-            }, 3000);
-        }
+        const actualPaidBy = paidBySelection === 'me' ? myRole : (myRole === 'userA' ? 'userB' : 'userA');
 
-        let calcExp = '';
-        const calcModal = document.getElementById('calcModal');
-        const calcSheet = document.getElementById('calcSheet');
-        const amountDisplay = document.getElementById('amountDisplay');
-        const calcEquation = document.getElementById('calcEquation');
-        const calcResult = document.getElementById('calcResult');
-
-        // Open calculator
-        amountDisplay.addEventListener('click', () => {
-            // Reset calc to current valid value or empty
-            calcExp = finalCalculatedAmount > 0 ? finalCalculatedAmount.toString() : '';
-            updateCalcDisplay();
-            
-            calcModal.classList.remove('hidden');
-            setTimeout(() => {
-                calcModal.classList.remove('opacity-0');
-                calcSheet.classList.remove('translate-y-full');
-            }, 10);
-        });
-
-        // Close calculator
-        window.closeCalculator = function() {
-            calcModal.classList.add('opacity-0');
-            calcSheet.classList.add('translate-y-full');
-            setTimeout(() => {
-                calcModal.classList.add('hidden');
-            }, 300);
-        };
-
-        // Calculator Logic
-        document.querySelectorAll('.calc-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault(); // prevent form submisison if inside form by any chance
-                const val = e.target.getAttribute('data-val');
-                
-                if (val === 'C') {
-                    calcExp = '';
-                } else if (val === 'DEL') {
-                    calcExp = calcExp.slice(0, -1);
-                } else if (val === 'OK') {
-                    evaluateCalc();
-                    amountDisplay.value = finalCalculatedAmount > 0 ? '$' + finalCalculatedAmount.toLocaleString() : '';
-                    closeCalculator();
-                    return; // Exit here
-                } else {
-                    // Prevent multiple operators or leading operators
-                    const lastChar = calcExp.slice(-1);
-                    const isOperator = ['+', '-', '*', '/'].includes(val);
-                    const isLastOperator = ['+', '-', '*', '/'].includes(lastChar);
-                    
-                    if (isOperator && calcExp === '') return; // Dont start with operator
-                    if (isOperator && isLastOperator) {
-                        // Replace last operator
-                        calcExp = calcExp.slice(0, -1) + val;
-                    } else {
-                        calcExp += val;
-                    }
-                }
-                updateCalcDisplay();
+        try {
+            const expensesRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+            await addDoc(expensesRef, {
+                name: itemName,
+                amount: finalCalculatedAmount,
+                paidBy: actualPaidBy,
+                isSplit: isSplit,
+                timestamp: Date.now()
             });
-        });
+            
+            document.getElementById('itemName').value = '';
+            document.getElementById('amountDisplay').value = '';
+            finalCalculatedAmount = 0;
+        } catch (err) {
+            console.error("Add error:", err);
+            showToast("新增失敗！");
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
 
-        function updateCalcDisplay() {
-            calcEquation.textContent = calcExp || '';
-            evaluateCalc(false);
+    window.deleteExpense = async function(id) {
+        try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id));
+        } catch(err) {
+            console.error("Delete error", err);
+            showToast("刪除失敗");
+        }
+    };
+
+    window.openSettleModal = function() {
+        if(expensesList.length === 0) return;
+        const m = document.getElementById('confirmModal');
+        const c = document.getElementById('modalContent');
+        m.classList.remove('hidden');
+        setTimeout(() => {
+            m.classList.remove('opacity-0');
+            c.classList.remove('scale-95');
+        }, 10);
+    };
+
+    window.closeSettleModal = function() {
+        const m = document.getElementById('confirmModal');
+        const c = document.getElementById('modalContent');
+        m.classList.add('opacity-0');
+        c.classList.add('scale-95');
+        setTimeout(() => m.classList.add('hidden'), 300);
+    };
+
+    window.confirmSettle = async function() {
+        if (currentMyBalance === 0) {
+            showToast("目前帳務已經是結清狀態囉！");
+            closeSettleModal();
+            return;
         }
 
-        function evaluateCalc(finalize = true) {
-            if (!calcExp) {
-                calcResult.textContent = '0';
+        const btn = document.getElementById('btnConfirmSettle');
+        btn.innerHTML = '<div class="spinner border-2"></div>';
+        btn.disabled = true;
+        
+        try {
+            const settleAmount = Math.abs(currentMyBalance);
+            const paidByRole = currentMyBalance > 0 ? (myRole === 'userA' ? 'userB' : 'userA') : myRole;
+
+            const expensesRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+            await addDoc(expensesRef, {
+                name: "💰 結清帳務",
+                amount: settleAmount,
+                paidBy: paidByRole,
+                isSplit: false,
+                timestamp: Date.now()
+            });
+            
+            closeSettleModal();
+            showToast("已成功新增結清紀錄！");
+        } catch(err) {
+            console.error("Settle error", err);
+            showToast("結清失敗");
+        } finally {
+            btn.innerHTML = '確認結清';
+            btn.disabled = false;
+        }
+    };
+
+    window.shareLink = function() {
+        const url = window.location.href;
+        if (url.startsWith('blob:') || url.includes('scf.usercontent.goog')) {
+            showToast("⚠️ 目前為預覽模式！請將此檔案部署至正式網址後再分享。");
+            return;
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast("✅ 已複製專屬網址，快傳給對方吧！");
+            }).catch(err => {
+                fallbackCopyTextToClipboard(url);
+            });
+        } else {
+            fallbackCopyTextToClipboard(url);
+        }
+    };
+    
+    function fallbackCopyTextToClipboard(text) {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast("✅ 已複製專屬網址，快傳給對方吧！");
+        } catch (err) {
+            showToast("複製失敗，請手動複製網址列。");
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            t.classList.add('opacity-0', 'pointer-events-none');
+        }, 3000);
+    }
+
+    let calcExp = '';
+    const calcModal = document.getElementById('calcModal');
+    const calcSheet = document.getElementById('calcSheet');
+    const amountDisplay = document.getElementById('amountDisplay');
+    const calcEquation = document.getElementById('calcEquation');
+    const calcResult = document.getElementById('calcResult');
+
+    amountDisplay.addEventListener('click', () => {
+        calcExp = finalCalculatedAmount > 0 ? finalCalculatedAmount.toString() : '';
+        updateCalcDisplay();
+        calcModal.classList.remove('hidden');
+        setTimeout(() => {
+            calcModal.classList.remove('opacity-0');
+            calcSheet.classList.remove('translate-y-full');
+        }, 10);
+    });
+
+    window.closeCalculator = function() {
+        calcModal.classList.add('opacity-0');
+        calcSheet.classList.add('translate-y-full');
+        setTimeout(() => { calcModal.classList.add('hidden'); }, 300);
+    };
+
+    document.querySelectorAll('.calc-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const val = e.target.getAttribute('data-val');
+            
+            if (val === 'C') {
+                calcExp = '';
+            } else if (val === 'DEL') {
+                calcExp = calcExp.slice(0, -1);
+            } else if (val === 'OK') {
+                evaluateCalc();
+                amountDisplay.value = finalCalculatedAmount > 0 ? '$' + finalCalculatedAmount.toLocaleString() : '';
+                closeCalculator();
+                return;
+            } else {
+                const lastChar = calcExp.slice(-1);
+                const isOperator = ['+', '-', '*', '/'].includes(val);
+                const isLastOperator = ['+', '-', '*', '/'].includes(lastChar);
+                
+                if (isOperator && calcExp === '') return;
+                if (isOperator && isLastOperator) {
+                    calcExp = calcExp.slice(0, -1) + val;
+                } else {
+                    calcExp += val;
+                }
+            }
+            updateCalcDisplay();
+        });
+    });
+
+    function updateCalcDisplay() {
+        calcEquation.textContent = calcExp || '';
+        evaluateCalc(false);
+    }
+
+    function evaluateCalc(finalize = true) {
+        if (!calcExp) {
+            calcResult.textContent = '0';
+            if(finalize) finalCalculatedAmount = 0;
+            return;
+        }
+        
+        try {
+            const sanitized = calcExp.replace(/[^0-9+\-*/.]/g, '');
+            let result = new Function('return ' + sanitized)();
+            
+            if (result === Infinity || isNaN(result)) {
+                calcResult.textContent = '錯誤';
                 if(finalize) finalCalculatedAmount = 0;
+            } else {
+                result = Math.round(result * 100) / 100;
+                calcResult.textContent = result.toLocaleString();
+                if(finalize) finalCalculatedAmount = result > 0 ? result : 0;
+            }
+        } catch (e) {
+            calcResult.textContent = '...';
+        }
+    }
+
+    const searchModal = document.getElementById('searchModal');
+    const searchSheet = document.getElementById('searchSheet');
+    const searchInput = document.getElementById('searchInputBottomSheet');
+    
+    window.openSearchModal = function() {
+        searchModal.classList.remove('hidden');
+        setTimeout(() => {
+            searchModal.classList.remove('opacity-0');
+            searchSheet.classList.remove('translate-y-full');
+            searchInput.focus();
+        }, 10);
+    };
+    window.closeSearchModal = function() {
+        searchModal.classList.add('opacity-0');
+        searchSheet.classList.add('translate-y-full');
+        setTimeout(() => searchModal.classList.add('hidden'), 300);
+    };
+    
+    window.setSearchTag = function(tag) {
+        searchInput.value = tag;
+        searchTerm = tag.toLowerCase();
+        updateUI();
+        closeSearchModal();
+    };
+
+    searchInput.addEventListener('input', (e) => {
+        searchTerm = e.target.value.trim().toLowerCase();
+        updateUI();
+    });
+
+    const calendarModal = document.getElementById('calendarModal');
+    const calendarSheet = document.getElementById('calendarSheet');
+    const dateInput = document.getElementById('dateFilterBottomSheet');
+
+    window.openCalendarModal = function() {
+        calendarModal.classList.remove('hidden');
+        setTimeout(() => {
+            calendarModal.classList.remove('opacity-0');
+            calendarSheet.classList.remove('translate-y-full');
+        }, 10);
+    };
+    window.closeCalendarModal = function() {
+        calendarModal.classList.add('opacity-0');
+        calendarSheet.classList.add('translate-y-full');
+        setTimeout(() => calendarModal.classList.add('hidden'), 300);
+    };
+
+    dateInput.addEventListener('change', (e) => {
+        selectedDate = e.target.value;
+        updateUI();
+    });
+
+    document.getElementById('clearDateBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        selectedDate = '';
+        dateInput.value = '';
+        updateUI();
+        closeCalendarModal();
+    });
+
+    function changeDateBy(days) {
+        let currentDate = selectedDate ? new Date(selectedDate) : new Date();
+        currentDate.setDate(currentDate.getDate() + days);
+        const offset = currentDate.getTimezoneOffset();
+        const targetDate = new Date(currentDate.getTime() - (offset*60*1000));
+        selectedDate = targetDate.toISOString().split('T')[0];
+        
+        dateInput.value = selectedDate;
+        updateUI();
+    }
+
+    document.getElementById('prevDayBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        changeDateBy(-1);
+    });
+    
+    document.getElementById('nextDayBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        changeDateBy(1);
+    });
+
+    // ======= 動態生成常用搜尋標籤 =======
+        window.updateDynamicTags = function() {
+            const nameCounts = {};
+            // 統計所有項目的出現次數
+            expensesList.forEach(exp => {
+                if (exp.name === "💰 結清帳務") return; // 排除結清紀錄
+                const name = exp.name.trim();
+                if (name) {
+                    nameCounts[name] = (nameCounts[name] || 0) + 1;
+                }
+            });
+
+            // 根據出現次數排序，並取出前 5 名
+            const sortedNames = Object.keys(nameCounts).sort((a, b) => nameCounts[b] - nameCounts[a]);
+            const top5 = sortedNames.slice(0, 5);
+
+            const container = document.getElementById('dynamicSearchTags');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (top5.length === 0) {
+                container.innerHTML = '<span class="text-gray-400 text-sm py-2 px-1">尚無常用紀錄</span>';
                 return;
             }
+
+            // 產生前 5 名的按鈕
+            top5.forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white border border-gray-200 px-4 py-2 rounded-full text-gray-600 font-bold hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm text-sm whitespace-nowrap flex-shrink-0";
+                btn.textContent = name;
+                btn.onclick = () => setSearchTag(name);
+                container.appendChild(btn);
+            });
             
-            try {
-                // Sanitize string to prevent injection
-                const sanitized = calcExp.replace(/[^0-9+\-*/.]/g, '');
-                // Evaluate safely
-                let result = new Function('return ' + sanitized)();
-                
-                if (result === Infinity || isNaN(result)) {
-                    calcResult.textContent = '錯誤';
-                    if(finalize) finalCalculatedAmount = 0;
-                } else {
-                    // Round to 2 decimals max for display, and drop decimals if zero
-                    result = Math.round(result * 100) / 100;
-                    calcResult.textContent = result.toLocaleString();
-                    if(finalize) finalCalculatedAmount = result > 0 ? result : 0;
-                }
-            } catch (e) {
-                // Incomplete equation like "5+"
-                calcResult.textContent = '...';
-            }
-        }
-
-        // Start initialization
-        window.onload = init;
-
-    </script>
-</body>
-</html>
+            // 加上清除/顯示全部的按鈕
+            const allBtn = document.createElement('button');
+            allBtn.className = "bg-gray-100 border border-gray-200 px-4 py-2 rounded-full text-gray-700 font-bold hover:bg-gray-200 transition-colors shadow-sm text-sm whitespace-nowrap flex-shrink-0";
+            allBtn.textContent = "顯示全部";
+            allBtn.onclick = () => setSearchTag('');
+            container.appendChild(allBtn);
+        };
+    window.onload = init;
+</script>
